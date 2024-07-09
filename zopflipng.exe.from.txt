@@ -1,0 +1,1 @@
+https://github.com/garyzyg/zopfli-windows/releases/tag/1.0.3
