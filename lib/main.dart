@@ -83,7 +83,7 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
   final List<EntryInfo> _entries = [];
   final Set<Process> _processes = {};
   bool _m = true;
-  bool _lossyTransparent = true;
+  bool _lossyTransparent = false;
   bool _lossy8bit = false;
 
   void _addEntries(DropDoneDetails details) async {
