@@ -41,8 +41,16 @@ jobs:
           filename: multi-zopflipng-gui-${{ github.ref_name }}.zip
           exclusions: "*.git*"
 
+      - run: dart run msix:build
+      - name: copy files
+        run: |
+          cp zopflipng.exe build\windows\x64\runner\Release\
+      - run: dart run msix:pack
+
       - name: Make Release
         uses: softprops/action-gh-release@1e07f4398721186383de40550babbdf2b84acfc5
         with:
           tag_name: ${{ github.ref_name }}
-          files: multi-zopflipng-gui-${{ github.ref_name }}.zip
+          files: |
+            multi-zopflipng-gui-${{ github.ref_name }}.zip
+            build\windows\x64\runner\Release\multi_zopflipng_gui.msix
