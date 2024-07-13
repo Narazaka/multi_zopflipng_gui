@@ -61,6 +61,7 @@ msix_config:
   publisher_display_name: Narazaka
   identity_name: 33175Narazaka.multizopflipnggui
   logo_path: multi_zopflipng_gui.png
+  languages: en-us, ja-jp
   store: true
   publisher: CN=4305BF1C-310A-44CC-8F08-90D00CDB831F
 
