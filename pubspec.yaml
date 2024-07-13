@@ -30,11 +30,15 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_localizations:
+    sdk: flutter
   desktop_drop: 0.4.4
   path: 1.9.0
   filesize: 2.0.1
   queue: 3.1.0+2
   window_manager: ^0.3.9
+  slang: ^3.31.1
+  slang_flutter: ^3.31.0
 
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.

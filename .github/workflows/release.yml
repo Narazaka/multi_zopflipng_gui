@@ -21,6 +21,7 @@ jobs:
         with:
           flutter-version: 3.22.2
       - run: flutter pub get
+      - run: dart run slang
       - run: flutter build windows
       - name: copy files
         run: |

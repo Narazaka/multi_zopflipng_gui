@@ -2,13 +2,17 @@ import 'dart:io';
 
 import 'package:filesize/filesize.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:desktop_drop/desktop_drop.dart';
 import 'package:path/path.dart' as p;
 import 'package:queue/queue.dart';
 import 'package:window_manager/window_manager.dart';
+import './i18n/strings.g.dart';
 
 void main() async {
-  runApp(const MyApp());
+  WidgetsFlutterBinding.ensureInitialized();
+  LocaleSettings.useDeviceLocale();
+  runApp(TranslationProvider(child: const MyApp()));
 }
 
 class MyApp extends StatelessWidget {
@@ -39,6 +43,9 @@ class MyApp extends StatelessWidget {
         useMaterial3: true,
       ),
       home: const MyHomePage(title: 'multi zopflipng'),
+      locale: TranslationProvider.of(context).flutterLocale, // use provider
+      supportedLocales: AppLocaleUtils.supportedLocales,
+      localizationsDelegates: GlobalMaterialLocalizations.delegates,
     );
   }
 }
@@ -148,7 +155,7 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
     var reduced = before - after;
     var reducedRate = before == 0 ? 0 : reduced / before;
     var reducedPercent = (reducedRate * 100).toStringAsFixed(2);
-    return "${processedEntries.length} / ${_entries.length} | total: ${filesize(totalBefore)} ${filesize(before)} -> ${filesize(after)} (-${filesize(reduced)} / $reducedPercent%)";
+    return "${processedEntries.length} / ${_entries.length} | ${t.result}: ${filesize(totalBefore)} ${filesize(before)} -> ${filesize(after)} (-${filesize(reduced)} / $reducedPercent%)";
   }
 
   @override
@@ -203,8 +210,8 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
               SizedBox(
                 width: 100,
                 child: TextFormField(
-                    decoration: const InputDecoration(
-                      labelText: 'concurrency',
+                    decoration: InputDecoration(
+                      labelText: t.concurrency,
                     ),
                     controller:
                         TextEditingController(text: _queue.parallel.toString()),
@@ -217,12 +224,12 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
               ),
               const SizedBox(width: 10),
               SizedBox(
-                width: 70,
+                width: 200,
                 child: CheckboxListTile(
                     controlAffinity: ListTileControlAffinity.leading,
                     contentPadding: const EdgeInsetsDirectional.all(0),
                     title: Transform.translate(
-                        offset: const Offset(-10, 0), child: const Text("-m")),
+                        offset: const Offset(-10, 0), child: Text(t.m)),
                     value: _m,
                     onChanged: (v) => setState(() {
                           _m = v!;
@@ -230,13 +237,13 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
               ),
               const SizedBox(width: 10),
               SizedBox(
-                width: 200,
+                width: 350,
                 child: CheckboxListTile(
                     controlAffinity: ListTileControlAffinity.leading,
                     contentPadding: const EdgeInsetsDirectional.all(0),
                     title: Transform.translate(
                         offset: const Offset(-10, 0),
-                        child: const Text("--lossy_transparent")),
+                        child: Text(t.lossy_transparent)),
                     value: _lossyTransparent,
                     onChanged: (v) => setState(() {
                           _lossyTransparent = v!;
@@ -244,13 +251,13 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
               ),
               const SizedBox(width: 10),
               SizedBox(
-                width: 140,
+                width: 350,
                 child: CheckboxListTile(
                     controlAffinity: ListTileControlAffinity.leading,
                     contentPadding: const EdgeInsetsDirectional.all(0),
                     title: Transform.translate(
                         offset: const Offset(-10, 0),
-                        child: const Text("--lossy_8bit")),
+                        child: Text(t.lossy_8bit)),
                     value: _lossy8bit,
                     onChanged: (v) => setState(() {
                           _lossy8bit = v!;
@@ -264,7 +271,7 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                       Text(
-                        'Drop files here!',
+                        t.drop_here,
                         style: Theme.of(context).textTheme.headlineMedium,
                       )
                     ]))
@@ -274,12 +281,12 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
                       child: SizedBox(
                           width: double.infinity,
                           child: DataTable(
-                            columns: const [
-                              DataColumn(label: Text("file")),
-                              DataColumn(label: Text("before")),
-                              DataColumn(label: Text("after")),
-                              DataColumn(label: Text("reduced")),
-                              DataColumn(label: Text("reduced %")),
+                            columns: [
+                              DataColumn(label: Text(t.file)),
+                              DataColumn(label: Text(t.before)),
+                              DataColumn(label: Text(t.after)),
+                              DataColumn(label: Text(t.reduced)),
+                              DataColumn(label: Text(t.reduced_percent)),
                             ],
                             rows: _entries
                                 .map((f) => DataRow(

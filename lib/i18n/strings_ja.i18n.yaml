@@ -1,0 +1,11 @@
+concurrency: 同時処理数
+m: さらなる圧縮
+lossy_transparent: 完全に透明なピクセルの色情報を削除
+lossy_8bit: 16bitカラーを8bitカラーに変換
+drop_here: ファイルまたはフォルダをここにドラッグ&ドロップしてください！
+result: 結果
+file: ファイル
+before: 元サイズ
+after: 圧縮後サイズ
+reduced: 削減サイズ
+reduced_percent: 削減 %

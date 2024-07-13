@@ -1,0 +1,11 @@
+concurrency: concurrency
+m: compress more
+lossy_transparent: remove colors behind alpha channel 0
+lossy_8bit: convert 16-bit color to 8-bit color
+drop_here: Drop files or folders here!
+result: result
+file: file
+before: before
+after: after
+reduced: reduced
+reduced_percent: reduced %
