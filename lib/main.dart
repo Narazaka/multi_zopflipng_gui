@@ -99,11 +99,11 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
       if (await FileSystemEntity.isDirectory(f.path)) {
         await for (var ff in Directory(f.path).list(recursive: true)) {
           if (await FileSystemEntity.isFile(ff.path) &&
-              p.extension(ff.path) == ".png") {
+              p.extension(ff.path).toLowerCase() == ".png") {
             addFiles.add(EntryInfo(ff.path, await File(ff.path).length()));
           }
         }
-      } else if (p.extension(f.path) == ".png") {
+      } else if (p.extension(f.path).toLowerCase() == ".png") {
         addFiles.add(EntryInfo(f.path, await File(f.path).length()));
       }
     }
