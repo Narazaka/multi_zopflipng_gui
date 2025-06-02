@@ -7,6 +7,7 @@ import 'package:desktop_drop/desktop_drop.dart';
 import 'package:path/path.dart' as p;
 import 'package:queue/queue.dart';
 import 'package:window_manager/window_manager.dart';
+import 'package:data_table_2/data_table_2.dart';
 import './i18n/strings.g.dart';
 
 void main() async {
@@ -276,35 +277,32 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
                       )
                     ]))
               : Expanded(
-                  child: SingleChildScrollView(
-                      scrollDirection: Axis.vertical,
-                      child: SizedBox(
-                          width: double.infinity,
-                          child: DataTable(
-                            columns: [
-                              DataColumn(label: Text(t.file)),
-                              DataColumn(label: Text(t.before)),
-                              DataColumn(label: Text(t.after)),
-                              DataColumn(label: Text(t.reduced)),
-                              DataColumn(label: Text(t.reduced_percent)),
-                            ],
-                            rows: _entries
-                                .map((f) => DataRow(
-                                        color: f.processing
-                                            ? WidgetStateProperty.resolveWith(
-                                                (states) {
-                                                return Colors.yellow;
-                                              })
-                                            : null,
-                                        cells: [
-                                          DataCell(Text(f.path)),
-                                          DataCell(Text(f.beforeSize)),
-                                          DataCell(Text(f.afterSize)),
-                                          DataCell(Text(f.reducedSize)),
-                                          DataCell(Text(f.reducedPercent)),
-                                        ]))
-                                .toList(),
-                          ))))
+                  child: DataTable2(
+                  fixedTopRows: 1,
+                  columns: [
+                    DataColumn2(label: Text(t.file), size: ColumnSize.L),
+                    DataColumn2(label: Text(t.before), fixedWidth: 140),
+                    DataColumn2(label: Text(t.after), fixedWidth: 140),
+                    DataColumn2(label: Text(t.reduced), fixedWidth: 140),
+                    DataColumn2(
+                        label: Text(t.reduced_percent), fixedWidth: 100),
+                  ],
+                  rows: _entries
+                      .map((f) => DataRow(
+                              color: f.processing
+                                  ? WidgetStateProperty.resolveWith((states) {
+                                      return Colors.yellow;
+                                    })
+                                  : null,
+                              cells: [
+                                DataCell(Text(f.path)),
+                                DataCell(Text(f.beforeSize)),
+                                DataCell(Text(f.afterSize)),
+                                DataCell(Text(f.reducedSize)),
+                                DataCell(Text(f.reducedPercent)),
+                              ]))
+                      .toList(),
+                ))
         ]),
       ),
     );
