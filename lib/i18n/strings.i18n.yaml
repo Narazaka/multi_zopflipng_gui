@@ -1,7 +1,9 @@
 concurrency: concurrency
 m: compress more
 lossy_transparent: remove colors behind alpha channel 0
-lossy_8bit: convert 16-bit color to 8-bit color
+lossy_8bit: 16 -> 8-bit color
+preserve_exif: keep Exif
+preserve_text_metadata: keep text metadata
 drop_here: Drop files or folders here!
 result: result
 file: file

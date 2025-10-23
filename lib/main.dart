@@ -93,6 +93,8 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
   bool _m = true;
   bool _lossyTransparent = false;
   bool _lossy8bit = false;
+  bool _preserveExif = false;
+  bool _preserveTextMetadata = true;
 
   void _addEntries(DropDoneDetails details) async {
     var addFiles = List<EntryInfo>.empty(growable: true);
@@ -122,6 +124,16 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
         }
         if (_lossy8bit) {
           args.add("--lossy_8bit");
+        }
+        if (_preserveExif || _preserveTextMetadata) {
+          final chunks = <String>[];
+          if (_preserveExif) {
+            chunks.add("eXIf");
+          }
+          if (_preserveTextMetadata) {
+            chunks.addAll(["tEXt", "zTXt", "iTXt"]);
+          }
+          args.add("--keepchunks=${chunks.join(",")}");
         }
         args.add("-y");
         args.add(e.path);
@@ -207,9 +219,9 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
         body: Column(children: [
           Row(
             children: [
-              const SizedBox(width: 10),
+              const SizedBox(width: 8),
               SizedBox(
-                width: 100,
+                width: 70,
                 child: TextFormField(
                     decoration: InputDecoration(
                       labelText: t.concurrency,
@@ -223,9 +235,9 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
                           _queue.parallel = int.parse(v);
                         })),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 8),
               SizedBox(
-                width: 200,
+                width: 140,
                 child: CheckboxListTile(
                     controlAffinity: ListTileControlAffinity.leading,
                     contentPadding: const EdgeInsetsDirectional.all(0),
@@ -236,9 +248,9 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
                           _m = v!;
                         })),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 8),
               SizedBox(
-                width: 350,
+                width: 310,
                 child: CheckboxListTile(
                     controlAffinity: ListTileControlAffinity.leading,
                     contentPadding: const EdgeInsetsDirectional.all(0),
@@ -250,9 +262,9 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
                           _lossyTransparent = v!;
                         })),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 8),
               SizedBox(
-                width: 350,
+                width: 220,
                 child: CheckboxListTile(
                     controlAffinity: ListTileControlAffinity.leading,
                     contentPadding: const EdgeInsetsDirectional.all(0),
@@ -262,6 +274,34 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
                     value: _lossy8bit,
                     onChanged: (v) => setState(() {
                           _lossy8bit = v!;
+                        })),
+              ),
+              const SizedBox(width: 8),
+              SizedBox(
+                width: 130,
+                child: CheckboxListTile(
+                    controlAffinity: ListTileControlAffinity.leading,
+                    contentPadding: const EdgeInsetsDirectional.all(0),
+                    title: Transform.translate(
+                        offset: const Offset(-10, 0),
+                        child: Text(t.preserve_exif)),
+                    value: _preserveExif,
+                    onChanged: (v) => setState(() {
+                          _preserveExif = v!;
+                        })),
+              ),
+              const SizedBox(width: 8),
+              SizedBox(
+                width: 210,
+                child: CheckboxListTile(
+                    controlAffinity: ListTileControlAffinity.leading,
+                    contentPadding: const EdgeInsetsDirectional.all(0),
+                    title: Transform.translate(
+                        offset: const Offset(-10, 0),
+                        child: Text(t.preserve_text_metadata)),
+                    value: _preserveTextMetadata,
+                    onChanged: (v) => setState(() {
+                          _preserveTextMetadata = v!;
                         })),
               ),
             ],
