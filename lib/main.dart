@@ -96,6 +96,7 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
   bool _preserveExif = false;
   bool _preserveTextMetadata = true;
   bool _isStarted = false;
+  int _sessionId = 0;
 
   void _addEntries(DropDoneDetails details) async {
     var addFiles = List<EntryInfo>.empty(growable: true);
@@ -120,8 +121,10 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
   }
 
   void _enqueueEntries(List<EntryInfo> entries) {
+    final currentSession = _sessionId;
     for (var e in entries) {
       _queue.add(() async {
+        if (currentSession != _sessionId) return;
         var args = <String>[];
         if (_m) {
           args.add("-m");
@@ -154,6 +157,8 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
           print(process.stderr);
         }
         _processes.remove(process);
+        // プロセスがkilledされた場合もあるので、その場合は結果を反映しない
+        if (currentSession != _sessionId) return;
         var after = await File(e.path).length();
         setState(() {
           e.processing = false;
@@ -164,9 +169,33 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
   }
 
   void _startProcessing() {
-    _isStarted = true;
-    var pendingEntries = _entries.where((e) => !e.isProcessed && !e.processing).toList();
+    setState(() {
+      _isStarted = true;
+    });
+    var pendingEntries =
+        _entries.where((e) => !e.isProcessed && !e.processing).toList();
     _enqueueEntries(pendingEntries);
+  }
+
+  void _stopProcessing() {
+    // Increment session ID to invalidate running tasks
+    _sessionId++;
+
+    // Kill all running processes
+    for (var p in _processes.toList()) {
+      p.kill(ProcessSignal.sigkill);
+    }
+    _processes.clear();
+
+    // Reset processing state for entries that were in progress
+    setState(() {
+      _isStarted = false;
+      for (var e in _entries) {
+        if (e.processing) {
+          e.processing = false;
+        }
+      }
+    });
   }
 
   String _title() {
@@ -318,12 +347,23 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
                         })),
               ),
               const SizedBox(width: 16),
-              ElevatedButton(
-                onPressed: _entries.any((e) => !e.isProcessed && !e.processing)
-                    ? _startProcessing
-                    : null,
-                child: Text(t.start),
-              ),
+              if (!_isStarted)
+                ElevatedButton(
+                  onPressed:
+                      _entries.any((e) => !e.isProcessed && !e.processing)
+                          ? _startProcessing
+                          : null,
+                  child: Text(t.start),
+                ),
+              if (_isStarted)
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red,
+                    foregroundColor: Colors.white,
+                  ),
+                  onPressed: _stopProcessing,
+                  child: Text(t.stop),
+                ),
             ],
           ),
           _entries.isEmpty

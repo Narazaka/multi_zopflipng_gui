@@ -12,3 +12,4 @@ after: 圧縮後サイズ
 reduced: 削減サイズ
 reduced_percent: 削減 %
 start: 開始
+stop: 停止
