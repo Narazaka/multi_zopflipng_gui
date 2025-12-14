@@ -192,7 +192,7 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
         setState(() {
           e.processing = true;
         });
-            var process = await Process.start("zopflipng.exe", args);
+        var process = await Process.start("zopflipng.exe", args);
         _processes.add(process);
         if (await process.exitCode != 0) {
           print(process.stderr);
@@ -205,7 +205,7 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
           e.processing = false;
           e.after = after;
         });
-          });
+      });
     }
   }
 
@@ -273,6 +273,9 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
 
   @override
   void onWindowClose() async {
+    // キュー内の待機中タスクをキャンセル
+    _queue.dispose();
+    // 実行中のプロセスを終了
     for (var p in _processes) {
       p.kill(ProcessSignal.sigkill);
     }
@@ -438,15 +441,37 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
                     children: [
                       // 固定ヘッダー
                       Container(
-                        color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                        color: Theme.of(context)
+                            .colorScheme
+                            .surfaceContainerHighest,
+                        padding: const EdgeInsets.symmetric(
+                            vertical: 12, horizontal: 16),
                         child: Row(
                           children: [
-                            Expanded(child: Text(t.file, style: const TextStyle(fontWeight: FontWeight.bold))),
-                            SizedBox(width: 140, child: Text(t.before, style: const TextStyle(fontWeight: FontWeight.bold))),
-                            SizedBox(width: 140, child: Text(t.after, style: const TextStyle(fontWeight: FontWeight.bold))),
-                            SizedBox(width: 140, child: Text(t.reduced, style: const TextStyle(fontWeight: FontWeight.bold))),
-                            SizedBox(width: 100, child: Text(t.reduced_percent, style: const TextStyle(fontWeight: FontWeight.bold))),
+                            Expanded(
+                                child: Text(t.file,
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.bold))),
+                            SizedBox(
+                                width: 140,
+                                child: Text(t.before,
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.bold))),
+                            SizedBox(
+                                width: 140,
+                                child: Text(t.after,
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.bold))),
+                            SizedBox(
+                                width: 140,
+                                child: Text(t.reduced,
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.bold))),
+                            SizedBox(
+                                width: 100,
+                                child: Text(t.reduced_percent,
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.bold))),
                           ],
                         ),
                       ),
@@ -459,14 +484,20 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
                             final f = _entries[index];
                             return Container(
                               color: f.processing ? Colors.yellow : null,
-                              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                              padding: const EdgeInsets.symmetric(
+                                  vertical: 8, horizontal: 16),
                               child: Row(
                                 children: [
                                   Expanded(child: Text(f.path)),
-                                  SizedBox(width: 140, child: Text(f.beforeSize)),
-                                  SizedBox(width: 140, child: Text(f.afterSize)),
-                                  SizedBox(width: 140, child: Text(f.reducedSize)),
-                                  SizedBox(width: 100, child: Text(f.reducedPercent)),
+                                  SizedBox(
+                                      width: 140, child: Text(f.beforeSize)),
+                                  SizedBox(
+                                      width: 140, child: Text(f.afterSize)),
+                                  SizedBox(
+                                      width: 140, child: Text(f.reducedSize)),
+                                  SizedBox(
+                                      width: 100,
+                                      child: Text(f.reducedPercent)),
                                 ],
                               ),
                             );
