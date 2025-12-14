@@ -4,6 +4,7 @@ import 'package:filesize/filesize.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:desktop_drop/desktop_drop.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:path/path.dart' as p;
 import 'package:queue/queue.dart';
 import 'package:window_manager/window_manager.dart';
@@ -110,6 +111,47 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
         }
       } else if (p.extension(f.path).toLowerCase() == ".png") {
         addFiles.add(EntryInfo(f.path, await File(f.path).length()));
+      }
+    }
+    setState(() {
+      _entries.addAll(addFiles);
+    });
+    if (_isStarted) {
+      _enqueueEntries(addFiles);
+    }
+  }
+
+  void _addFilesFromPicker() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['png'],
+      allowMultiple: true,
+    );
+    if (result == null) return;
+
+    var addFiles = <EntryInfo>[];
+    for (var file in result.files) {
+      if (file.path != null) {
+        addFiles.add(EntryInfo(file.path!, await File(file.path!).length()));
+      }
+    }
+    setState(() {
+      _entries.addAll(addFiles);
+    });
+    if (_isStarted) {
+      _enqueueEntries(addFiles);
+    }
+  }
+
+  void _addFolderFromPicker() async {
+    final result = await FilePicker.platform.getDirectoryPath();
+    if (result == null) return;
+
+    var addFiles = <EntryInfo>[];
+    await for (var file in Directory(result).list(recursive: true)) {
+      if (await FileSystemEntity.isFile(file.path) &&
+          p.extension(file.path).toLowerCase() == ".png") {
+        addFiles.add(EntryInfo(file.path, await File(file.path).length()));
       }
     }
     setState(() {
@@ -258,6 +300,22 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
           // the App.build method, and use it to set our appbar title.
           title: Text(_title()),
           actions: [
+            Padding(
+              padding: const EdgeInsets.only(right: 8.0),
+              child: OutlinedButton.icon(
+                onPressed: _addFilesFromPicker,
+                icon: const Icon(Icons.file_open),
+                label: Text(t.add_files),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.only(right: 8.0),
+              child: OutlinedButton.icon(
+                onPressed: _addFolderFromPicker,
+                icon: const Icon(Icons.folder_open),
+                label: Text(t.add_folder),
+              ),
+            ),
             if (!_isStarted)
               Padding(
                 padding: const EdgeInsets.only(right: 8.0),

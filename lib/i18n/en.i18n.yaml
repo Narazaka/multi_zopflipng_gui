@@ -13,3 +13,5 @@ reduced: reduced
 reduced_percent: reduced %
 start: Start Processing
 stop: Stop Processing
+add_files: Add Files
+add_folder: Add Folder

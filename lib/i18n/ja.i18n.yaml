@@ -13,3 +13,5 @@ reduced: 削減サイズ
 reduced_percent: 削減 %
 start: 処理を開始
 stop: 処理を停止
+add_files: ファイルを追加
+add_folder: フォルダを追加
