@@ -8,7 +8,6 @@ import 'package:file_picker/file_picker.dart';
 import 'package:path/path.dart' as p;
 import 'package:queue/queue.dart';
 import 'package:window_manager/window_manager.dart';
-import 'package:data_table_2/data_table_2.dart';
 import './i18n/strings.g.dart';
 
 void main() async {
@@ -193,7 +192,7 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
         setState(() {
           e.processing = true;
         });
-        var process = await Process.start("zopflipng.exe", args);
+            var process = await Process.start("zopflipng.exe", args);
         _processes.add(process);
         if (await process.exitCode != 0) {
           print(process.stderr);
@@ -206,7 +205,7 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
           e.processing = false;
           e.after = after;
         });
-      });
+          });
     }
   }
 
@@ -435,32 +434,48 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
                       )
                     ]))
               : Expanded(
-                  child: DataTable2(
-                  fixedTopRows: 1,
-                  columns: [
-                    DataColumn2(label: Text(t.file), size: ColumnSize.L),
-                    DataColumn2(label: Text(t.before), fixedWidth: 140),
-                    DataColumn2(label: Text(t.after), fixedWidth: 140),
-                    DataColumn2(label: Text(t.reduced), fixedWidth: 140),
-                    DataColumn2(
-                        label: Text(t.reduced_percent), fixedWidth: 100),
-                  ],
-                  rows: _entries
-                      .map((f) => DataRow(
-                              color: f.processing
-                                  ? WidgetStateProperty.resolveWith((states) {
-                                      return Colors.yellow;
-                                    })
-                                  : null,
-                              cells: [
-                                DataCell(Text(f.path)),
-                                DataCell(Text(f.beforeSize)),
-                                DataCell(Text(f.afterSize)),
-                                DataCell(Text(f.reducedSize)),
-                                DataCell(Text(f.reducedPercent)),
-                              ]))
-                      .toList(),
-                ))
+                  child: Column(
+                    children: [
+                      // 固定ヘッダー
+                      Container(
+                        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                        child: Row(
+                          children: [
+                            Expanded(child: Text(t.file, style: const TextStyle(fontWeight: FontWeight.bold))),
+                            SizedBox(width: 140, child: Text(t.before, style: const TextStyle(fontWeight: FontWeight.bold))),
+                            SizedBox(width: 140, child: Text(t.after, style: const TextStyle(fontWeight: FontWeight.bold))),
+                            SizedBox(width: 140, child: Text(t.reduced, style: const TextStyle(fontWeight: FontWeight.bold))),
+                            SizedBox(width: 100, child: Text(t.reduced_percent, style: const TextStyle(fontWeight: FontWeight.bold))),
+                          ],
+                        ),
+                      ),
+                      const Divider(height: 1),
+                      // 仮想化されたスクロールリスト
+                      Expanded(
+                        child: ListView.builder(
+                          itemCount: _entries.length,
+                          itemBuilder: (context, index) {
+                            final f = _entries[index];
+                            return Container(
+                              color: f.processing ? Colors.yellow : null,
+                              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                              child: Row(
+                                children: [
+                                  Expanded(child: Text(f.path)),
+                                  SizedBox(width: 140, child: Text(f.beforeSize)),
+                                  SizedBox(width: 140, child: Text(f.afterSize)),
+                                  SizedBox(width: 140, child: Text(f.reducedSize)),
+                                  SizedBox(width: 100, child: Text(f.reducedPercent)),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                )
         ]),
       ),
     );
