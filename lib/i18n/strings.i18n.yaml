@@ -11,3 +11,4 @@ before: before
 after: after
 reduced: reduced
 reduced_percent: reduced %
+start: Start

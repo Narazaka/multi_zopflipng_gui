@@ -95,6 +95,7 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
   bool _lossy8bit = false;
   bool _preserveExif = false;
   bool _preserveTextMetadata = true;
+  bool _isStarted = false;
 
   void _addEntries(DropDoneDetails details) async {
     var addFiles = List<EntryInfo>.empty(growable: true);
@@ -113,7 +114,13 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
     setState(() {
       _entries.addAll(addFiles);
     });
-    for (var e in addFiles) {
+    if (_isStarted) {
+      _enqueueEntries(addFiles);
+    }
+  }
+
+  void _enqueueEntries(List<EntryInfo> entries) {
+    for (var e in entries) {
       _queue.add(() async {
         var args = <String>[];
         if (_m) {
@@ -154,6 +161,12 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
         });
       });
     }
+  }
+
+  void _startProcessing() {
+    _isStarted = true;
+    var pendingEntries = _entries.where((e) => !e.isProcessed && !e.processing).toList();
+    _enqueueEntries(pendingEntries);
   }
 
   String _title() {
@@ -303,6 +316,13 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
                     onChanged: (v) => setState(() {
                           _preserveTextMetadata = v!;
                         })),
+              ),
+              const SizedBox(width: 16),
+              ElevatedButton(
+                onPressed: _entries.any((e) => !e.isProcessed && !e.processing)
+                    ? _startProcessing
+                    : null,
+                child: Text(t.start),
               ),
             ],
           ),
