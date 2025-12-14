@@ -257,6 +257,24 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
           // Here we take the value from the MyHomePage object that was created by
           // the App.build method, and use it to set our appbar title.
           title: Text(_title()),
+          actions: [
+            if (!_isStarted)
+              Padding(
+                padding: const EdgeInsets.only(right: 8.0),
+                child: FilledButton(
+                  onPressed: _startProcessing,
+                  child: Text(t.start),
+                ),
+              ),
+            if (_isStarted)
+              Padding(
+                padding: const EdgeInsets.only(right: 8.0),
+                child: OutlinedButton(
+                  onPressed: _stopProcessing,
+                  child: Text(t.stop),
+                ),
+              ),
+          ],
         ),
         body: Column(children: [
           Row(
@@ -346,24 +364,6 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
                           _preserveTextMetadata = v!;
                         })),
               ),
-              const SizedBox(width: 16),
-              if (!_isStarted)
-                ElevatedButton(
-                  onPressed:
-                      _entries.any((e) => !e.isProcessed && !e.processing)
-                          ? _startProcessing
-                          : null,
-                  child: Text(t.start),
-                ),
-              if (_isStarted)
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.red,
-                    foregroundColor: Colors.white,
-                  ),
-                  onPressed: _stopProcessing,
-                  child: Text(t.stop),
-                ),
             ],
           ),
           _entries.isEmpty

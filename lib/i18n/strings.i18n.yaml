@@ -11,5 +11,5 @@ before: before
 after: after
 reduced: reduced
 reduced_percent: reduced %
-start: Start
-stop: Stop
+start: Start Processing
+stop: Stop Processing

@@ -11,5 +11,5 @@ before: 元サイズ
 after: 圧縮後サイズ
 reduced: 削減サイズ
 reduced_percent: 削減 %
-start: 開始
-stop: 停止
+start: 処理を開始
+stop: 処理を停止
