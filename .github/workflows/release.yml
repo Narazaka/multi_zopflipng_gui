@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   push:
     tags:
-      - 'v*'
+      - "v*"
 
 permissions:
   contents: write
@@ -19,7 +19,7 @@ jobs:
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: 3.32.1
+          flutter-version: 3.35.7
       - run: flutter pub get
       - run: dart run slang
       - run: flutter build windows
@@ -47,7 +47,6 @@ jobs:
         run: |
           cp zopflipng.exe build\windows\x64\runner\Release\
       - run: dart run msix:pack
-
       - name: Make Release
         uses: softprops/action-gh-release@1e07f4398721186383de40550babbdf2b84acfc5
         with:
