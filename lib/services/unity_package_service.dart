@@ -75,6 +75,7 @@ class UnityPackageService {
   /// Extract a specific PNG entry to a temporary file
   Future<String> extractPngToTemp(
     String packagePath,
+    String packageId,
     UnityPackagePngEntry entry,
   ) async {
     final tempDir = await _getTempDir();
@@ -92,8 +93,8 @@ class UnityPackageService {
     // Find the asset file for this GUID
     for (final archiveEntry in archive) {
       if (archiveEntry.name == '${entry.guid}/asset') {
-        // Write to temp file
-        final tempFile = File(p.join(tempDir.path, '${entry.guid}.png'));
+        // Write to temp file (use packageId to avoid collisions)
+        final tempFile = File(p.join(tempDir.path, '${packageId}_${entry.guid}.png'));
         await tempFile.writeAsBytes(archiveEntry.content as List<int>);
         return tempFile.path;
       }

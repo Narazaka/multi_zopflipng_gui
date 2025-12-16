@@ -46,6 +46,7 @@ dependencies:
   data_table_2: ^2.5.18
   file_picker: ^10.3.7
   archive: ^4.0.7
+  uuid: ^4.5.1
 
 dev_dependencies:
   flutter_test:

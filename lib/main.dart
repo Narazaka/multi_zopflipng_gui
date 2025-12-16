@@ -225,6 +225,7 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
           // Extract PNG to temp file
           final tempPath = await _unityPackageService.extractPngToTemp(
             pkg.path,
+            pkg.id,
             pngEntry,
           );
           pngEntry.tempFilePath = tempPath;

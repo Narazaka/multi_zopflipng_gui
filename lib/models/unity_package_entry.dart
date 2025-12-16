@@ -1,6 +1,9 @@
 import 'package:filesize/filesize.dart';
+import 'package:uuid/uuid.dart';
 
 import 'entry_info.dart';
+
+const _uuid = Uuid();
 
 /// Entry info for PNG files inside a UnityPackage
 class UnityPackagePngEntry implements EntryInfo {
@@ -48,6 +51,8 @@ class UnityPackagePngEntry implements EntryInfo {
 
 /// Entry info for UnityPackage files
 class UnityPackageEntry implements EntryInfo {
+  /// Unique identifier for this entry (used for temp file naming)
+  final String id;
   final String path;
   @override
   final int before;
@@ -98,5 +103,5 @@ class UnityPackageEntry implements EntryInfo {
     required this.path,
     required this.before,
     required this.pngEntries,
-  });
+  }) : id = _uuid.v4();
 }
