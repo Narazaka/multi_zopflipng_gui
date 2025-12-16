@@ -320,19 +320,33 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
     // Note: temp files are kept for resume capability
   }
 
+  /// Get all PNG entries (including those inside UnityPackage)
+  List<EntryInfo> _getAllPngEntries() {
+    final allPngs = <EntryInfo>[];
+    for (final e in _entries) {
+      if (e is PngEntryInfo) {
+        allPngs.add(e);
+      } else if (e is UnityPackageEntry) {
+        allPngs.addAll(e.pngEntries);
+      }
+    }
+    return allPngs;
+  }
+
   String _title() {
     if (_entries.isEmpty) {
       return "ready";
     }
-    var processedEntries =
-        _entries.where((e) => e.isProcessed).toList(growable: false);
-    var totalBefore = _entries.fold(0, (p, e) => p + e.before);
-    var before = processedEntries.fold(0, (p, e) => p + e.before);
-    var after = processedEntries.fold(0, (p, e) => p + e.after!);
-    var reduced = before - after;
-    var reducedRate = before == 0 ? 0 : reduced / before;
-    var reducedPercent = (reducedRate * 100).toStringAsFixed(2);
-    return "${processedEntries.length} / ${_entries.length} | ${t.result}: ${filesize(totalBefore)} ${filesize(before)} -> ${filesize(after)} (-${filesize(reduced)} / $reducedPercent%)";
+    // Count all PNG entries including those inside UnityPackage
+    final allPngs = _getAllPngEntries();
+    final processedPngs = allPngs.where((e) => e.isProcessed).toList();
+    final totalBefore = allPngs.fold(0, (p, e) => p + e.before);
+    final before = processedPngs.fold(0, (p, e) => p + e.before);
+    final after = processedPngs.fold(0, (p, e) => p + e.after!);
+    final reduced = before - after;
+    final reducedRate = before == 0 ? 0 : reduced / before;
+    final reducedPercent = (reducedRate * 100).toStringAsFixed(2);
+    return "${processedPngs.length} / ${allPngs.length} | ${t.result}: ${filesize(totalBefore)} ${filesize(before)} -> ${filesize(after)} (-${filesize(reduced)} / $reducedPercent%)";
   }
 
   /// Display item for the list view
