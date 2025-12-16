@@ -187,10 +187,10 @@ class UnityPackageService {
       }
       try {
         await file.rename(backupFile.path);
-        await tempFile.rename(file.path);
+        await tempFile.copy(file.path);
+        await tempFile.delete();
         await backupFile.delete();
       } catch (e) {
-        // エラー時に元に戻す処理
         if (await backupFile.exists()) {
           await backupFile.rename(file.path);
         }
