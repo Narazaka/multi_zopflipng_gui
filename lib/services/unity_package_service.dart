@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:archive/archive.dart';
@@ -42,8 +43,8 @@ class UnityPackageService {
       final fileName = parts[1];
 
       if (fileName == 'pathname') {
-        // Read pathname content
-        final content = String.fromCharCodes(entry.content as List<int>).trim();
+        // Read pathname content (decode as UTF-8 for proper Japanese support)
+        final content = utf8.decode(entry.content as List<int>).trim();
         pathnameMap[guid] = content;
       } else if (fileName == 'asset') {
         assetSizeMap[guid] = entry.size;
