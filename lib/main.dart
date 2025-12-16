@@ -11,8 +11,10 @@ import 'package:window_manager/window_manager.dart';
 
 import './i18n/strings.g.dart';
 import './models/entry_info.dart';
+import './models/unity_package_entry.dart';
 import './services/zopflipng_options.dart';
 import './services/png_compressor.dart';
+import './services/unity_package_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -50,8 +52,9 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> with WindowListener {
   final Queue _queue = Queue(parallel: Platform.numberOfProcessors ~/ 2);
-  final List<PngEntryInfo> _entries = [];
+  final List<EntryInfo> _entries = [];
   final PngCompressor _pngCompressor = PngCompressor();
+  final UnityPackageService _unityPackageService = UnityPackageService();
 
   bool _m = true;
   bool _lossyTransparent = false;
@@ -70,7 +73,7 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
       );
 
   void _addEntries(DropDoneDetails details) async {
-    var addEntries = <PngEntryInfo>[];
+    var addEntries = <EntryInfo>[];
     for (var f in details.files) {
       if (await FileSystemEntity.isDirectory(f.path)) {
         await for (var ff in Directory(f.path).list(recursive: true)) {
@@ -78,6 +81,9 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
             final ext = p.extension(ff.path).toLowerCase();
             if (ext == ".png") {
               addEntries.add(PngEntryInfo(ff.path, await File(ff.path).length()));
+            } else if (ext == ".unitypackage") {
+              final entry = await _createUnityPackageEntry(ff.path);
+              if (entry != null) addEntries.add(entry);
             }
           }
         }
@@ -85,6 +91,9 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
         final ext = p.extension(f.path).toLowerCase();
         if (ext == ".png") {
           addEntries.add(PngEntryInfo(f.path, await File(f.path).length()));
+        } else if (ext == ".unitypackage") {
+          final entry = await _createUnityPackageEntry(f.path);
+          if (entry != null) addEntries.add(entry);
         }
       }
     }
@@ -96,20 +105,40 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
     }
   }
 
+  Future<UnityPackageEntry?> _createUnityPackageEntry(String path) async {
+    try {
+      final pngEntries = await _unityPackageService.scanPngEntries(path);
+      if (pngEntries.isEmpty) return null;
+
+      final fileSize = await File(path).length();
+      return UnityPackageEntry(
+        path: path,
+        before: fileSize,
+        pngEntries: pngEntries,
+      );
+    } catch (e) {
+      // Failed to parse unitypackage, skip it
+      return null;
+    }
+  }
+
   void _addFilesFromPicker() async {
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
-      allowedExtensions: ['png'],
+      allowedExtensions: ['png', 'unitypackage'],
       allowMultiple: true,
     );
     if (result == null) return;
 
-    var addEntries = <PngEntryInfo>[];
+    var addEntries = <EntryInfo>[];
     for (var file in result.files) {
       if (file.path != null) {
         final ext = p.extension(file.path!).toLowerCase();
         if (ext == ".png") {
           addEntries.add(PngEntryInfo(file.path!, await File(file.path!).length()));
+        } else if (ext == ".unitypackage") {
+          final entry = await _createUnityPackageEntry(file.path!);
+          if (entry != null) addEntries.add(entry);
         }
       }
     }
@@ -125,12 +154,15 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
     final result = await FilePicker.platform.getDirectoryPath();
     if (result == null) return;
 
-    var addEntries = <PngEntryInfo>[];
+    var addEntries = <EntryInfo>[];
     await for (var file in Directory(result).list(recursive: true)) {
       if (await FileSystemEntity.isFile(file.path)) {
         final ext = p.extension(file.path).toLowerCase();
         if (ext == ".png") {
           addEntries.add(PngEntryInfo(file.path, await File(file.path).length()));
+        } else if (ext == ".unitypackage") {
+          final entry = await _createUnityPackageEntry(file.path);
+          if (entry != null) addEntries.add(entry);
         }
       }
     }
@@ -142,10 +174,14 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
     }
   }
 
-  void _enqueueEntries(List<PngEntryInfo> entries) {
+  void _enqueueEntries(List<EntryInfo> entries) {
     final currentSession = _sessionId;
     for (var e in entries) {
-      _enqueuePngEntry(e, currentSession);
+      if (e is PngEntryInfo) {
+        _enqueuePngEntry(e, currentSession);
+      } else if (e is UnityPackageEntry) {
+        _enqueueUnityPackageEntry(e, currentSession);
+      }
     }
   }
 
@@ -170,6 +206,88 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
     });
   }
 
+  void _enqueueUnityPackageEntry(UnityPackageEntry pkg, int currentSession) {
+    for (var pngEntry in pkg.pngEntries) {
+      // Skip already processed entries
+      if (pngEntry.isProcessed || pngEntry.processing) continue;
+
+      _queue.add(() async {
+        if (currentSession != _sessionId) return;
+
+        setState(() {
+          pngEntry.processing = true;
+        });
+
+        try {
+          // Extract PNG to temp file
+          final tempPath = await _unityPackageService.extractPngToTemp(
+            pkg.path,
+            pngEntry,
+          );
+          pngEntry.tempFilePath = tempPath;
+
+          // Compress the temp file
+          final result = await _pngCompressor.compress(tempPath, _options);
+
+          if (currentSession != _sessionId) return;
+
+          setState(() {
+            pngEntry.processing = false;
+            if (result.success) {
+              pngEntry.after = result.newSize;
+            }
+          });
+
+          // Check if all PNGs are processed and repackage
+          _checkAndRepackage(pkg, currentSession);
+        } catch (e) {
+          if (currentSession != _sessionId) return;
+          setState(() {
+            pngEntry.processing = false;
+          });
+        }
+      });
+    }
+
+    // Also check if already all processed (resuming after stop)
+    _checkAndRepackage(pkg, currentSession);
+  }
+
+  void _checkAndRepackage(UnityPackageEntry pkg, int currentSession) {
+    if (!pkg.allPngsProcessed) return;
+    if (pkg.processing) return; // Already repackaging
+
+    _queue.add(() async {
+      if (currentSession != _sessionId) return;
+
+      setState(() {
+        pkg.processing = true;
+      });
+
+      try {
+        final newSize = await _unityPackageService.repackage(
+          pkg.path,
+          pkg.pngEntries,
+        );
+
+        if (currentSession != _sessionId) return;
+
+        setState(() {
+          pkg.processing = false;
+          pkg.after = newSize;
+        });
+
+        // Cleanup temp files
+        await _unityPackageService.cleanupTempFiles(pkg.pngEntries);
+      } catch (e) {
+        if (currentSession != _sessionId) return;
+        setState(() {
+          pkg.processing = false;
+        });
+      }
+    });
+  }
+
   void _startProcessing() {
     setState(() {
       _isStarted = true;
@@ -189,8 +307,17 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
         if (e.processing) {
           e.processing = false;
         }
+        // Reset processing flag on child entries, but keep processed state
+        if (e is UnityPackageEntry) {
+          for (var child in e.pngEntries) {
+            if (child.processing) {
+              child.processing = false;
+            }
+          }
+        }
       }
     });
+    // Note: temp files are kept for resume capability
   }
 
   String _title() {
@@ -206,6 +333,68 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
     var reducedRate = before == 0 ? 0 : reduced / before;
     var reducedPercent = (reducedRate * 100).toStringAsFixed(2);
     return "${processedEntries.length} / ${_entries.length} | ${t.result}: ${filesize(totalBefore)} ${filesize(before)} -> ${filesize(after)} (-${filesize(reduced)} / $reducedPercent%)";
+  }
+
+  /// Display item for the list view
+  List<_DisplayItem> _buildDisplayList() {
+    final items = <_DisplayItem>[];
+    for (final e in _entries) {
+      if (e is PngEntryInfo) {
+        items.add(_DisplayItem(entry: e, indent: 0));
+      } else if (e is UnityPackageEntry) {
+        items.add(_DisplayItem(entry: e, indent: 0, isUnityPackage: true));
+        for (final child in e.pngEntries) {
+          items.add(_DisplayItem(entry: child, indent: 1));
+        }
+      }
+    }
+    return items;
+  }
+
+  Widget _buildEntryRow(_DisplayItem item) {
+    final e = item.entry;
+
+    Color? bgColor;
+    if (e.processing) {
+      bgColor = Colors.yellow;
+    } else if (item.isUnityPackage) {
+      // Check if any child is processing
+      final pkg = e as UnityPackageEntry;
+      if (pkg.pngEntries.any((child) => child.processing)) {
+        bgColor = Colors.yellow.shade100;
+      } else {
+        bgColor = Theme.of(context).colorScheme.surfaceContainerLow;
+      }
+    }
+
+    return Container(
+      color: bgColor,
+      padding: EdgeInsets.only(
+        left: 16.0 + (item.indent * 24.0),
+        right: 16.0,
+        top: 8.0,
+        bottom: 8.0,
+      ),
+      child: Row(
+        children: [
+          if (item.isUnityPackage)
+            const Padding(
+              padding: EdgeInsets.only(right: 8.0),
+              child: Icon(Icons.inventory_2, size: 16),
+            ),
+          if (item.indent > 0)
+            const Padding(
+              padding: EdgeInsets.only(right: 8.0),
+              child: Icon(Icons.image, size: 16),
+            ),
+          Expanded(child: Text(e.displayPath)),
+          SizedBox(width: 140, child: Text(e.beforeSize)),
+          SizedBox(width: 140, child: Text(e.afterSize)),
+          SizedBox(width: 140, child: Text(e.reducedSize)),
+          SizedBox(width: 100, child: Text(e.reducedPercent)),
+        ],
+      ),
+    );
   }
 
   @override
@@ -229,6 +418,7 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
   void onWindowClose() async {
     _queue.dispose();
     _pngCompressor.killAll();
+    await _unityPackageService.cleanupAll();
     await windowManager.destroy();
   }
 
@@ -413,23 +603,10 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
                       const Divider(height: 1),
                       Expanded(
                         child: ListView.builder(
-                          itemCount: _entries.length,
+                          itemCount: _buildDisplayList().length,
                           itemBuilder: (context, index) {
-                            final e = _entries[index];
-                            return Container(
-                              color: e.processing ? Colors.yellow : null,
-                              padding: const EdgeInsets.symmetric(
-                                  vertical: 8, horizontal: 16),
-                              child: Row(
-                                children: [
-                                  Expanded(child: Text(e.path)),
-                                  SizedBox(width: 140, child: Text(e.beforeSize)),
-                                  SizedBox(width: 140, child: Text(e.afterSize)),
-                                  SizedBox(width: 140, child: Text(e.reducedSize)),
-                                  SizedBox(width: 100, child: Text(e.reducedPercent)),
-                                ],
-                              ),
-                            );
+                            final item = _buildDisplayList()[index];
+                            return _buildEntryRow(item);
                           },
                         ),
                       ),
@@ -440,4 +617,17 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
       ),
     );
   }
+}
+
+/// Display item for the list view with indent level
+class _DisplayItem {
+  final EntryInfo entry;
+  final int indent;
+  final bool isUnityPackage;
+
+  _DisplayItem({
+    required this.entry,
+    required this.indent,
+    this.isUnityPackage = false,
+  });
 }

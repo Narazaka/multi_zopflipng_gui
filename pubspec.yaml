@@ -45,6 +45,7 @@ dependencies:
   cupertino_icons: ^1.0.6
   data_table_2: ^2.5.18
   file_picker: ^10.3.7
+  archive: ^4.0.7
 
 dev_dependencies:
   flutter_test:
