@@ -8,7 +8,11 @@ import 'package:file_picker/file_picker.dart';
 import 'package:path/path.dart' as p;
 import 'package:queue/queue.dart';
 import 'package:window_manager/window_manager.dart';
+
 import './i18n/strings.g.dart';
+import './models/entry_info.dart';
+import './services/zopflipng_options.dart';
+import './services/png_compressor.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -19,32 +23,16 @@ void main() async {
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'multi zopflipng',
       theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // TRY THIS: Try running your application with "flutter run". You'll see
-        // the application has a purple toolbar. Then, without quitting the app,
-        // try changing the seedColor in the colorScheme below to Colors.green
-        // and then invoke "hot reload" (save your changes or press the "hot
-        // reload" button in a Flutter-supported IDE, or press "r" if you used
-        // the command line to start the app).
-        //
-        // Notice that the counter didn't reset back to zero; the application
-        // state is not lost during the reload. To reset the state, use hot
-        // restart instead.
-        //
-        // This works for code too, not just values: Most code changes can be
-        // tested with just a hot reload.
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
       home: const MyHomePage(title: 'multi zopflipng'),
-      locale: TranslationProvider.of(context).flutterLocale, // use provider
+      locale: TranslationProvider.of(context).flutterLocale,
       supportedLocales: AppLocaleUtils.supportedLocales,
       localizationsDelegates: GlobalMaterialLocalizations.delegates,
     );
@@ -54,42 +42,17 @@ class MyApp extends StatelessWidget {
 class MyHomePage extends StatefulWidget {
   const MyHomePage({super.key, required this.title});
 
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
   final String title;
 
   @override
   State<MyHomePage> createState() => _MyHomePageState();
 }
 
-class EntryInfo {
-  final String path;
-  final int before;
-  bool processing = false;
-  int? after;
-  int? get reduced => isProcessed ? before - after! : null;
-  double? get reducedRate => isProcessed ? reduced! / before : null;
-  bool get isProcessed => after != null;
-  String get beforeSize => filesize(before);
-  String get afterSize => isProcessed ? filesize(after!) : "";
-  String get reducedSize => isProcessed ? "-${filesize(reduced!)}" : "";
-  String get reducedPercent =>
-      isProcessed ? "-${(reducedRate! * 100).toStringAsFixed(2)}" : "";
-
-  EntryInfo(this.path, this.before);
-}
-
 class _MyHomePageState extends State<MyHomePage> with WindowListener {
   final Queue _queue = Queue(parallel: Platform.numberOfProcessors ~/ 2);
-  final List<EntryInfo> _entries = [];
-  final Set<Process> _processes = {};
+  final List<PngEntryInfo> _entries = [];
+  final PngCompressor _pngCompressor = PngCompressor();
+
   bool _m = true;
   bool _lossyTransparent = false;
   bool _lossy8bit = false;
@@ -98,25 +61,38 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
   bool _isStarted = false;
   int _sessionId = 0;
 
+  ZopflipngOptions get _options => ZopflipngOptions(
+        m: _m,
+        lossyTransparent: _lossyTransparent,
+        lossy8bit: _lossy8bit,
+        preserveExif: _preserveExif,
+        preserveTextMetadata: _preserveTextMetadata,
+      );
+
   void _addEntries(DropDoneDetails details) async {
-    var addFiles = List<EntryInfo>.empty(growable: true);
+    var addEntries = <PngEntryInfo>[];
     for (var f in details.files) {
       if (await FileSystemEntity.isDirectory(f.path)) {
         await for (var ff in Directory(f.path).list(recursive: true)) {
-          if (await FileSystemEntity.isFile(ff.path) &&
-              p.extension(ff.path).toLowerCase() == ".png") {
-            addFiles.add(EntryInfo(ff.path, await File(ff.path).length()));
+          if (await FileSystemEntity.isFile(ff.path)) {
+            final ext = p.extension(ff.path).toLowerCase();
+            if (ext == ".png") {
+              addEntries.add(PngEntryInfo(ff.path, await File(ff.path).length()));
+            }
           }
         }
-      } else if (p.extension(f.path).toLowerCase() == ".png") {
-        addFiles.add(EntryInfo(f.path, await File(f.path).length()));
+      } else {
+        final ext = p.extension(f.path).toLowerCase();
+        if (ext == ".png") {
+          addEntries.add(PngEntryInfo(f.path, await File(f.path).length()));
+        }
       }
     }
     setState(() {
-      _entries.addAll(addFiles);
+      _entries.addAll(addEntries);
     });
     if (_isStarted) {
-      _enqueueEntries(addFiles);
+      _enqueueEntries(addEntries);
     }
   }
 
@@ -128,17 +104,20 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
     );
     if (result == null) return;
 
-    var addFiles = <EntryInfo>[];
+    var addEntries = <PngEntryInfo>[];
     for (var file in result.files) {
       if (file.path != null) {
-        addFiles.add(EntryInfo(file.path!, await File(file.path!).length()));
+        final ext = p.extension(file.path!).toLowerCase();
+        if (ext == ".png") {
+          addEntries.add(PngEntryInfo(file.path!, await File(file.path!).length()));
+        }
       }
     }
     setState(() {
-      _entries.addAll(addFiles);
+      _entries.addAll(addEntries);
     });
     if (_isStarted) {
-      _enqueueEntries(addFiles);
+      _enqueueEntries(addEntries);
     }
   }
 
@@ -146,67 +125,49 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
     final result = await FilePicker.platform.getDirectoryPath();
     if (result == null) return;
 
-    var addFiles = <EntryInfo>[];
+    var addEntries = <PngEntryInfo>[];
     await for (var file in Directory(result).list(recursive: true)) {
-      if (await FileSystemEntity.isFile(file.path) &&
-          p.extension(file.path).toLowerCase() == ".png") {
-        addFiles.add(EntryInfo(file.path, await File(file.path).length()));
+      if (await FileSystemEntity.isFile(file.path)) {
+        final ext = p.extension(file.path).toLowerCase();
+        if (ext == ".png") {
+          addEntries.add(PngEntryInfo(file.path, await File(file.path).length()));
+        }
       }
     }
     setState(() {
-      _entries.addAll(addFiles);
+      _entries.addAll(addEntries);
     });
     if (_isStarted) {
-      _enqueueEntries(addFiles);
+      _enqueueEntries(addEntries);
     }
   }
 
-  void _enqueueEntries(List<EntryInfo> entries) {
+  void _enqueueEntries(List<PngEntryInfo> entries) {
     final currentSession = _sessionId;
     for (var e in entries) {
-      _queue.add(() async {
-        if (currentSession != _sessionId) return;
-        var args = <String>[];
-        if (_m) {
-          args.add("-m");
-        }
-        if (_lossyTransparent) {
-          args.add("--lossy_transparent");
-        }
-        if (_lossy8bit) {
-          args.add("--lossy_8bit");
-        }
-        if (_preserveExif || _preserveTextMetadata) {
-          final chunks = <String>[];
-          if (_preserveExif) {
-            chunks.add("eXIf");
-          }
-          if (_preserveTextMetadata) {
-            chunks.addAll(["tEXt", "zTXt", "iTXt"]);
-          }
-          args.add("--keepchunks=${chunks.join(",")}");
-        }
-        args.add("-y");
-        args.add(e.path);
-        args.add(e.path);
-        setState(() {
-          e.processing = true;
-        });
-        var process = await Process.start("zopflipng.exe", args);
-        _processes.add(process);
-        if (await process.exitCode != 0) {
-          print(process.stderr);
-        }
-        _processes.remove(process);
-        // プロセスがkilledされた場合もあるので、その場合は結果を反映しない
-        if (currentSession != _sessionId) return;
-        var after = await File(e.path).length();
-        setState(() {
-          e.processing = false;
-          e.after = after;
-        });
-      });
+      _enqueuePngEntry(e, currentSession);
     }
+  }
+
+  void _enqueuePngEntry(PngEntryInfo e, int currentSession) {
+    _queue.add(() async {
+      if (currentSession != _sessionId) return;
+
+      setState(() {
+        e.processing = true;
+      });
+
+      final result = await _pngCompressor.compress(e.path, _options);
+
+      if (currentSession != _sessionId) return;
+
+      setState(() {
+        e.processing = false;
+        if (result.success) {
+          e.after = result.newSize;
+        }
+      });
+    });
   }
 
   void _startProcessing() {
@@ -219,16 +180,9 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
   }
 
   void _stopProcessing() {
-    // Increment session ID to invalidate running tasks
     _sessionId++;
+    _pngCompressor.killAll();
 
-    // Kill all running processes
-    for (var p in _processes.toList()) {
-      p.kill(ProcessSignal.sigkill);
-    }
-    _processes.clear();
-
-    // Reset processing state for entries that were in progress
     setState(() {
       _isStarted = false;
       for (var e in _entries) {
@@ -273,33 +227,18 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
 
   @override
   void onWindowClose() async {
-    // キュー内の待機中タスクをキャンセル
     _queue.dispose();
-    // 実行中のプロセスを終了
-    for (var p in _processes) {
-      p.kill(ProcessSignal.sigkill);
-    }
+    _pngCompressor.killAll();
     await windowManager.destroy();
   }
 
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
     return DropTarget(
       onDragDone: _addEntries,
       child: Scaffold(
         appBar: AppBar(
-          // TRY THIS: Try changing the color here to a specific color (to
-          // Colors.amber, perhaps?) and trigger a hot reload to see the AppBar
-          // change color while the other colors stay the same.
           backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-          // Here we take the value from the MyHomePage object that was created by
-          // the App.build method, and use it to set our appbar title.
           title: Text(_title()),
           actions: [
             Padding(
@@ -348,9 +287,6 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
                     ),
                     controller:
                         TextEditingController(text: _queue.parallel.toString()),
-                    // initialValue: _queue.parallel.toString(),
-                    //keyboardType: TextInputType.number,
-                    //inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                     onChanged: (v) => setState(() {
                           _queue.parallel = int.parse(v);
                         })),
@@ -439,7 +375,6 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
               : Expanded(
                   child: Column(
                     children: [
-                      // 固定ヘッダー
                       Container(
                         color: Theme.of(context)
                             .colorScheme
@@ -476,28 +411,22 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
                         ),
                       ),
                       const Divider(height: 1),
-                      // 仮想化されたスクロールリスト
                       Expanded(
                         child: ListView.builder(
                           itemCount: _entries.length,
                           itemBuilder: (context, index) {
-                            final f = _entries[index];
+                            final e = _entries[index];
                             return Container(
-                              color: f.processing ? Colors.yellow : null,
+                              color: e.processing ? Colors.yellow : null,
                               padding: const EdgeInsets.symmetric(
                                   vertical: 8, horizontal: 16),
                               child: Row(
                                 children: [
-                                  Expanded(child: Text(f.path)),
-                                  SizedBox(
-                                      width: 140, child: Text(f.beforeSize)),
-                                  SizedBox(
-                                      width: 140, child: Text(f.afterSize)),
-                                  SizedBox(
-                                      width: 140, child: Text(f.reducedSize)),
-                                  SizedBox(
-                                      width: 100,
-                                      child: Text(f.reducedPercent)),
+                                  Expanded(child: Text(e.path)),
+                                  SizedBox(width: 140, child: Text(e.beforeSize)),
+                                  SizedBox(width: 140, child: Text(e.afterSize)),
+                                  SizedBox(width: 140, child: Text(e.reducedSize)),
+                                  SizedBox(width: 100, child: Text(e.reducedPercent)),
                                 ],
                               ),
                             );
