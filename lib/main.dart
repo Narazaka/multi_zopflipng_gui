@@ -80,7 +80,8 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
           if (await FileSystemEntity.isFile(ff.path)) {
             final ext = p.extension(ff.path).toLowerCase();
             if (ext == ".png") {
-              addEntries.add(PngEntryInfo(ff.path, await File(ff.path).length()));
+              addEntries
+                  .add(PngEntryInfo(ff.path, await File(ff.path).length()));
             } else if (ext == ".unitypackage") {
               final entry = await _createUnityPackageEntry(ff.path);
               if (entry != null) addEntries.add(entry);
@@ -135,7 +136,8 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
       if (file.path != null) {
         final ext = p.extension(file.path!).toLowerCase();
         if (ext == ".png") {
-          addEntries.add(PngEntryInfo(file.path!, await File(file.path!).length()));
+          addEntries
+              .add(PngEntryInfo(file.path!, await File(file.path!).length()));
         } else if (ext == ".unitypackage") {
           final entry = await _createUnityPackageEntry(file.path!);
           if (entry != null) addEntries.add(entry);
@@ -159,7 +161,8 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
       if (await FileSystemEntity.isFile(file.path)) {
         final ext = p.extension(file.path).toLowerCase();
         if (ext == ".png") {
-          addEntries.add(PngEntryInfo(file.path, await File(file.path).length()));
+          addEntries
+              .add(PngEntryInfo(file.path, await File(file.path).length()));
         } else if (ext == ".unitypackage") {
           final entry = await _createUnityPackageEntry(file.path);
           if (entry != null) addEntries.add(entry);
@@ -430,7 +433,8 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
 
   @override
   void onWindowClose() async {
-    _queue.dispose();
+    // Invalidate all pending tasks
+    _sessionId++;
     _pngCompressor.killAll();
     await _unityPackageService.cleanupAll();
     await windowManager.destroy();
