@@ -94,7 +94,8 @@ class UnityPackageService {
     for (final archiveEntry in archive) {
       if (archiveEntry.name == '${entry.guid}/asset') {
         // Write to temp file (use packageId to avoid collisions)
-        final tempFile = File(p.join(tempDir.path, '${packageId}_${entry.guid}.png'));
+        final tempFile =
+            File(p.join(tempDir.path, '${packageId}_${entry.guid}.png'));
         await tempFile.writeAsBytes(archiveEntry.content as List<int>);
         return tempFile.path;
       }
@@ -174,8 +175,30 @@ class UnityPackageService {
     // Encode to gzip with archtemp.tar filename
     final gzipBytes = _createGzipWithFilename(newTarBytes, 'archtemp.tar');
 
-    // Write to file
-    await file.writeAsBytes(gzipBytes);
+    // Write to tempfile
+    final tempFile = File(p.join(
+        (await _getTempDir()).path, 'repacked_${p.basename(packagePath)}'));
+    await tempFile.writeAsBytes(gzipBytes);
+
+    if (await file.exists()) {
+      final backupFile = File('${file.path}.bak');
+      if (await backupFile.exists()) {
+        await backupFile.delete();
+      }
+      try {
+        await file.rename(backupFile.path);
+        await tempFile.rename(file.path);
+        await backupFile.delete();
+      } catch (e) {
+        // エラー時に元に戻す処理
+        if (await backupFile.exists()) {
+          await backupFile.rename(file.path);
+        }
+        rethrow;
+      }
+    } else {
+      await tempFile.rename(file.path);
+    }
 
     return gzipBytes.length;
   }
