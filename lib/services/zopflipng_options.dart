@@ -1,3 +1,5 @@
+import 'package:multi_zopflipng_gui/services/ansi_safe_path.dart';
+
 /// Options for zopflipng compression
 class ZopflipngOptions {
   final bool m;
@@ -38,8 +40,8 @@ class ZopflipngOptions {
       args.add("--keepchunks=${chunks.join(",")}");
     }
     args.add("-y");
-    args.add(inputPath);
-    args.add(outputPath);
+    args.add(toAnsiSafePath(inputPath));
+    args.add(toAnsiSafePath(outputPath));
 
     return args;
   }

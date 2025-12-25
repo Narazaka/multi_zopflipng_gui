@@ -47,6 +47,9 @@ dependencies:
   file_picker: ^10.3.7
   archive: ^4.0.7
   uuid: ^4.5.1
+  ffi: ^2.1.4
+  win32: ^5.15.0
+  jis0208: ^1.0.1
 
 dev_dependencies:
   flutter_test:
