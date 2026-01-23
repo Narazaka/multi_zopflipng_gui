@@ -1,1 +1,1 @@
-https://github.com/garyzyg/zopfli-windows/releases/tag/1.0.3
+https://github.com/Narazaka/zopfli/actions/runs/21275387624
