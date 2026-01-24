@@ -52,6 +52,7 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> with WindowListener {
   final Queue _queue = Queue(parallel: Platform.numberOfProcessors ~/ 2);
+  final Queue _repackageQueue = Queue(parallel: 1);
   final List<EntryInfo> _entries = [];
   final PngCompressor _pngCompressor = PngCompressor();
   final UnityPackageService _unityPackageService = UnityPackageService();
@@ -261,7 +262,7 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
     if (!pkg.allPngsProcessed) return;
     if (pkg.processing) return; // Already repackaging
 
-    _queue.add(() async {
+    _repackageQueue.add(() async {
       if (currentSession != _sessionId) return;
 
       setState(() {
