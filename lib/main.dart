@@ -205,6 +205,10 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
         e.processing = false;
         if (result.success) {
           e.after = result.newSize;
+        } else {
+          // Compression failed (e.g. not a valid PNG): skip this file.
+          e.skipped = true;
+          e.after = e.before;
         }
       });
     });
@@ -240,6 +244,10 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
             pngEntry.processing = false;
             if (result.success) {
               pngEntry.after = result.newSize;
+            } else {
+              // Compression failed: skip this entry, keep the original asset.
+              pngEntry.skipped = true;
+              pngEntry.after = pngEntry.before;
             }
           });
 
@@ -249,7 +257,12 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
           if (currentSession != _sessionId) return;
           setState(() {
             pngEntry.processing = false;
+            // Extraction/processing error: skip this entry so the package
+            // can still be repackaged.
+            pngEntry.skipped = true;
+            pngEntry.after = pngEntry.before;
           });
+          _checkAndRepackage(pkg, currentSession);
         }
       });
     }
@@ -376,6 +389,8 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
     Color? bgColor;
     if (e.processing) {
       bgColor = Colors.yellow;
+    } else if (e.skipped) {
+      bgColor = Colors.grey.shade300;
     } else if (item.isUnityPackage) {
       // Check if any child is processing
       final pkg = e as UnityPackageEntry;
@@ -408,9 +423,10 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
             ),
           Expanded(child: Text(e.displayPath)),
           SizedBox(width: 140, child: Text(e.beforeSize)),
-          SizedBox(width: 140, child: Text(e.afterSize)),
-          SizedBox(width: 140, child: Text(e.reducedSize)),
-          SizedBox(width: 100, child: Text(e.reducedPercent)),
+          SizedBox(
+              width: 140, child: Text(e.skipped ? t.skipped : e.afterSize)),
+          SizedBox(width: 140, child: Text(e.skipped ? "" : e.reducedSize)),
+          SizedBox(width: 100, child: Text(e.skipped ? "" : e.reducedPercent)),
         ],
       ),
     );

@@ -5,6 +5,7 @@ abstract class EntryInfo {
   bool get processing;
   set processing(bool value);
   bool get isProcessed;
+  bool get skipped;
   int get before;
   int? get after;
   int? get reduced;
@@ -25,6 +26,10 @@ class PngEntryInfo implements EntryInfo {
   bool processing = false;
   @override
   int? after;
+
+  /// True when compression failed and this file was skipped.
+  @override
+  bool skipped = false;
 
   @override
   int? get reduced => isProcessed ? before - after! : null;

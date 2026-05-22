@@ -119,8 +119,13 @@ class UnityPackageService {
     final tarDecoder = TarDecoder();
     final originalArchive = tarDecoder.decodeBytes(tarBytes);
 
-    // Create a set of PNG GUIDs for quick lookup
-    final pngGuids = pngEntries.map((e) => e.guid).toSet();
+    // GUIDs whose asset should be replaced with the compressed version.
+    // Skipped entries (compression failed / not a PNG) keep their original
+    // asset, so they are excluded here.
+    final replacedGuids = pngEntries
+        .where((e) => !e.skipped && e.tempFilePath != null)
+        .map((e) => e.guid)
+        .toSet();
 
     // Create new archive
     final newArchive = Archive();
@@ -141,8 +146,9 @@ class UnityPackageService {
       final guid = parts[0];
       final fileName = parts[1];
 
-      // If this is a PNG asset file, skip it (we'll add the compressed version)
-      if (pngGuids.contains(guid) && fileName == 'asset') {
+      // If this is a PNG asset file to be replaced, skip it (we'll add the
+      // compressed version). Skipped entries fall through and are copied as-is.
+      if (replacedGuids.contains(guid) && fileName == 'asset') {
         continue;
       }
 
@@ -156,6 +162,7 @@ class UnityPackageService {
 
     // Add compressed PNG files
     for (final pngEntry in pngEntries) {
+      if (pngEntry.skipped) continue;
       if (pngEntry.tempFilePath == null) continue;
 
       final compressedFile = File(pngEntry.tempFilePath!);

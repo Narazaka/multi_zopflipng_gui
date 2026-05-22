@@ -17,6 +17,11 @@ class UnityPackagePngEntry implements EntryInfo {
   @override
   bool processing = false;
 
+  /// True when compression failed and this entry was skipped
+  /// (the original asset is kept as-is on repackage).
+  @override
+  bool skipped = false;
+
   @override
   int? get reduced => isProcessed ? before - after! : null;
 
@@ -63,6 +68,10 @@ class UnityPackageEntry implements EntryInfo {
   bool processing = false;
 
   bool get allPngsProcessed => pngEntries.every((e) => e.isProcessed);
+
+  /// A UnityPackage itself is never skipped; it is always repackaged.
+  @override
+  bool get skipped => false;
 
   @override
   bool get isProcessed => after != null;

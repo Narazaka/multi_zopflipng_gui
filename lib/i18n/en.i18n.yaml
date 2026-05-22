@@ -15,3 +15,4 @@ start: Start Processing
 stop: Stop Processing
 add_files: Add Files
 add_folder: Add Folder
+skipped: skipped
